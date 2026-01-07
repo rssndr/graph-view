@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #fafafa;
+    overflow: hidden;
+    font-family: system-ui, sans-serif;
+  }
+  svg {
+    width: 100%;
+    height: 100vh;
+    display: block;
+  }
+  #controls {
+    position: absolute; top: 16px; left: 16px; background: white; padding: 16px 20px; border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15); z-index: 100; color: #24292f; font-weight: 500; width: 260px;
+  }
+  #controls label { display: block; margin: 14px 0 6px; }
+  #controls input { width: 100%; height: 6px; border-radius: 3px; background: #e6e6e6; outline: none; }
+  #controls input::-webkit-slider-thumb { background: #1f6feb; height: 18px; width: 18px; border-radius: 50%; cursor: pointer; }
+  #controls select {
+    width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #d0d7de; font-size: 14px;
+  }
+  .link { stroke: #d0d7de; stroke-opacity: 0.45; stroke-width: 1.3px; }
+  .link.faded { stroke-opacity: 0.15; }
+  .node circle { cursor: pointer; }
+  .node.focused circle { stroke: #eb1f6f; stroke-width: 2px; }
+  .node.faded { opacity: 0.3; }
+  text { font-size: 12px; font-weight: 500; pointer-events: none; fill: #000000;
+         text-shadow: 0 0 3px #fafafa, 0 0 3px #fafafa, 0 0 3px #fafafa; }
+</style>
+</head>
+<body>
+<svg id="graph"></svg>
+<div id="controls">
+  <label>Gravity <input type="range" min="-500" max="-20" value="-250" id="rep"></label>
+  <label>Repulsion <input type="range" min="0" max="0.5" step="0.01" value="0.1" id="grav"></label>
+  <label>Link Distance <input type="range" min="20" max="200" value="80" id="link"></label>
+ 
+  <label>Focus on Article</label>
+  <select id="article-select">
+    <option value="">— Select an article —</option>
+  </select>
+</div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+let simulation, svg, g, zoomBehavior, nodes, links, node, link;
+let currentlyFocused = null;
+let oldWidth = window.innerWidth;
+let oldHeight = window.innerHeight;
+let userHasInteracted = false; // tracks manual zoom/pan after programmatic focus
+
+function updateLabels(k) {
+  if (!node) return;
+  node.select("text").style("display", d => {
+    if (k > 0.7) return "block";
+    if (k > 0.5 && d.group !== 'article') return "block";
+    if (k > 0.4 && (d.group === 'root' || d.group === 'topic')) return "block";
+    return "none";
+  });
+}
+
+function clearFocus() {
+  if (!currentlyFocused) return;
+  node.classed("focused faded", false);
+  node.select("circle").attr("stroke", null).attr("stroke-width", null);
+  link.classed("faded", false);
+  currentlyFocused = null;
+}
+
+fetch('graph.txt')
+  .then(r => r.json())
+  .then(graphData => {
+    nodes = graphData.nodes.map(n => ({
+      id: n.id,
+      name: n.name,
+      group: n.id === 'ROOT_TOP' ? 'root' :
+             n.id.startsWith('T') ? 'topic' :
+             n.id.startsWith('AU') ? 'author' : 'article'
+    }));
+    links = graphData.links.map(l => ({ source: l.source, target: l.target }));
+
+    svg = d3.select("#graph");
+
+    zoomBehavior = d3.zoom()
+      .scaleExtent([0.1, 8])
+      .on("zoom", event => {
+        // If this zoom event comes from user input (not programmatic), mark interaction
+        if (event.sourceEvent) {
+          userHasInteracted = true;
+        }
+        g.attr("transform", event.transform);
+        updateLabels(event.transform.k);
+      })
+      .on("end", event => {
+        // Only clear focus if the user manually interacted after the last focus
+        if (currentlyFocused && userHasInteracted && event.sourceEvent) {
+          clearFocus();
+          userHasInteracted = false; // reset for next focus
+        }
+      });
+
+    svg.call(zoomBehavior);
+
+    g = svg.append("g");
+
+    // Initial centering
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    svg.call(zoomBehavior.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.8));
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+      const newWidth = window.innerWidth;
+      const newHeight = window.innerHeight;
+      const dx = newWidth / 2 - oldWidth / 2;
+      const dy = newHeight / 2 - oldHeight / 2;
+
+      const current = d3.zoomTransform(svg.node());
+      const adjusted = current.translate(dx, dy);
+      svg.call(zoomBehavior.transform, adjusted);
+
+      oldWidth = newWidth;
+      oldHeight = newHeight;
+
+      if (!currentlyFocused) {
+        svg.call(zoomBehavior.transform, d3.zoomIdentity.translate(newWidth / 2, newHeight / 2).scale(0.8));
+      }
+    });
+
+    simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id(d => d.id).distance(edge => {
+        const s = edge.source.id || edge.source;
+        const t = edge.target.id || target;
+        if (s === 'ROOT_TOP' || t === 'ROOT_TOP') return 150;
+        return +document.getElementById('link').value;
+      }))
+      .force("charge", d3.forceManyBody().strength(+document.getElementById('rep').value))
+      .force("center", d3.forceCenter(0, 0).strength(+document.getElementById('grav').value / 100))
+      .force("collide", d3.forceCollide().radius(d => getRadius(d) + 5))
+      .on("tick", ticked);
+
+    function restart() {
+      simulation.force("charge").strength(+document.getElementById('rep').value);
+      simulation.force("center").strength(+document.getElementById('grav').value / 100);
+      simulation.force("link").distance(e => {
+        const s = typeof e.source === 'object' ? e.source.id : e.source;
+        const t = typeof e.target === 'object' ? e.target.id : e.target;
+        return (s === 'ROOT_TOP' || t === 'ROOT_TOP') ? 150 : +document.getElementById('link').value;
+      });
+      simulation.alpha(1).restart();
+    }
+
+    link = g.append("g")
+      .selectAll("line")
+      .data(links)
+      .join("line")
+      .attr("class", "link");
+
+    node = g.append("g")
+      .selectAll("g")
+      .data(nodes)
+      .join("g")
+      .attr("class", "node")
+      .call(drag(simulation));
+
+    node.append("circle")
+      .attr("r", d => getRadius(d))
+      .attr("fill", d => getColor(d));
+
+    node.append("text")
+      .text(d => d.name)
+      .attr("dx", d => getRadius(d) + 6)
+      .attr("dy", ".35em")
+      .attr("font-size", d => d.id === 'ROOT_TOP' ? 18 : 11.8)
+      .attr("font-weight", d => d.id === 'ROOT_TOP' ? 'bold' : '500');
+
+    // Populate dropdown
+    const articleNodes = nodes
+      .filter(d => d.group === 'article')
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    d3.select("#article-select")
+      .selectAll("option")
+      .data(["", ...articleNodes.map(d => d.name)])
+      .join("option")
+      .attr("value", d => d)
+      .text(d => d || "— Select an article —");
+
+    function focusOnNode(selectedNode) {
+      clearFocus(); // clear any previous
+      node.filter(d => d === selectedNode).classed("focused", true);
+      const connectedNodes = new Set([selectedNode.id]);
+      links.forEach(l => {
+        const s = l.source.id || l.source;
+        const t = l.target.id || l.target;
+        if (s === selectedNode.id || t === selectedNode.id) {
+          connectedNodes.add(s);
+          connectedNodes.add(t);
+        }
+      });
+      node.filter(d => !connectedNodes.has(d.id)).classed("faded", true);
+      link.classed("faded", true);
+      currentlyFocused = selectedNode;
+      userHasInteracted = false; // reset flag – the upcoming programmatic zoom should not clear focus
+
+      svg.transition()
+        .duration(1000)
+        .call(zoomBehavior.translateTo, selectedNode.x, selectedNode.y)
+        .transition()
+        .duration(800)
+        .call(zoomBehavior.scaleTo, 2.8);
+    }
+
+    d3.select("#article-select").on("change", function() {
+      const val = this.value;
+      if (!val) {
+        clearFocus();
+        userHasInteracted = false;
+        svg.transition().duration(1000)
+          .call(zoomBehavior.transform, d3.zoomIdentity.translate(window.innerWidth / 2, window.innerHeight / 2).scale(0.8));
+        return;
+      }
+      const n = nodes.find(d => d.name === val);
+      if (n) setTimeout(() => focusOnNode(n), 300);
+    });
+
+    // Hover logic (only when not focused)
+    node.on("mouseover", function(event, d) {
+      if (currentlyFocused) return;
+      node.classed("faded", true);
+      link.classed("faded", true);
+      d3.select(this).classed("faded", false);
+      const neighbors = new Set([d.id]);
+      link.filter(l => {
+        const s = l.source.id || l.source;
+        const t = l.target.id || l.target;
+        if (s === d.id || t === d.id) {
+          neighbors.add(s);
+          neighbors.add(t);
+          return true;
+        }
+        return false;
+      }).classed("faded", false);
+      node.filter(n => neighbors.has(n.id)).classed("faded", false);
+    });
+
+    const clearHover = () => {
+      if (currentlyFocused) return;
+      node.classed("faded", false);
+      link.classed("faded", false);
+    };
+
+    node.on("mouseout", clearHover);
+    link.on("mouseover", function(event, d) {
+      if (currentlyFocused) return;
+      node.classed("faded", true);
+      link.classed("faded", true);
+      d3.select(this).classed("faded", false);
+      const s = d.source.id || d.source;
+      const t = d.target.id || d.target;
+      node.filter(n => n.id === s || n.id === t).classed("faded", false);
+    });
+    link.on("mouseout", clearHover);
+    svg.on("mouseleave", clearHover);
+
+    function drag(sim) {
+      return d3.drag()
+        .on("start", e => {
+          if (!e.active) sim.alphaTarget(0.3).restart();
+          e.subject.fx = e.x;
+          e.subject.fy = e.y;
+          // Node drag = user interaction → clear focus
+          if (currentlyFocused) {
+            clearFocus();
+            userHasInteracted = false;
+          }
+        })
+        .on("drag", e => {
+          e.subject.fx = e.x;
+          e.subject.fy = e.y;
+        })
+        .on("end", e => {
+          if (!e.active) sim.alphaTarget(0);
+          e.subject.fx = null;
+          e.subject.fy = null;
+        });
+    }
+
+    function ticked() {
+      link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+          .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+      node.attr("transform", d => `translate(${d.x},${d.y})`);
+    }
+
+    function getRadius(d) {
+      return d.group === 'root' ? 20 : d.group === 'topic' ? 14 : d.group === 'author' ? 10 : 7;
+    }
+
+    function getColor(d) {
+      return d.group === 'root' ? '#c41d7f' :
+             d.group === 'topic' ? '#1f6feb' :
+             d.group === 'author' ? '#fa8c16' : '#6e7681';
+    }
+
+    function restart() {
+      simulation.force("charge").strength(+document.getElementById('rep').value - (+document.getElementById('grav').value * 1000));
+      simulation.force("link").distance(e => {
+        const s = typeof e.source === 'object' ? e.source.id : e.source;
+        const t = typeof e.target === 'object' ? e.target.id : e.target;
+        return (s === 'ROOT_TOP' || t === 'ROOT_TOP') ? 150 : +document.getElementById('link').value;
+      });
+      simulation.alpha(1).restart();
+    }
+
+    document.getElementById('rep').oninput = restart;
+    document.getElementById('grav').oninput = restart;
+    document.getElementById('link').oninput = restart;
+
+    node.on("click", (event, d) => {
+      if (d.name && d.name !== 'Topics') {
+        window.open(`https://staging.ave-europa.eu/wiki/${d.name.toLowerCase().replace(/\s+/g, '-')}/`, '_blank');
+      }
+    });
+  });
+</script>
+</body>
+</html>
+

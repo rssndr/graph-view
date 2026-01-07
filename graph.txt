@@ -1,0 +1,62 @@
+{
+  "nodes": [
+    {"id": "ROOT_TOP", "name": "Topics"},
+
+    {"id": "T1", "name": "European Federalism"},
+    {"id": "T2", "name": "Digital Sovereignty"},
+    {"id": "T3", "name": "Defense Union"},
+    {"id": "T4", "name": "Energy Independence"},
+    {"id": "T5", "name": "Migration & Borders"},
+    {"id": "T6", "name": "Economic Constitution"},
+
+    {"id": "A1", "name": "The Path to a Federal Europe"},
+    {"id": "A2", "name": "Why the EU Needs Its Own Army"},
+    {"id": "A3", "name": "A Common European Debt"},
+    {"id": "A4", "name": "Ending Unanimity Rule"},
+    {"id": "A5", "name": "European Cloud Act"},
+    {"id": "A6", "name": "Banning Chinese 5G"},
+    {"id": "A7", "name": "Data Protection vs Innovation"},
+    {"id": "A8", "name": "Nuclear Energy Renaissance"},
+    {"id": "A9", "name": "Nord Stream Sabotage"},
+    {"id": "A10", "name": "European Green Deal Reality Check"},
+    {"id": "A11", "name": "Fortress Europe"},
+    {"id": "A12", "name": "Dublin Reform Dead?"},
+    {"id": "A13", "name": "Frontex 2.0"},
+    {"id": "A14", "name": "European Fiscal Union"},
+    {"id": "A15", "name": "Eurobonds Are Inevitable"},
+    {"id": "A16", "name": "Capital Markets Union"},
+    {"id": "A17", "name": "Reforming the ECB Mandate"},
+    {"id": "A18", "name": "Strategic Autonomy Explained"},
+    {"id": "A19", "name": "The Return of Industrial Policy"},
+    {"id": "A20", "name": "EU Chips Act"},
+    {"id": "A21", "name": "Critical Raw Materials"},
+    {"id": "A22", "name": "Permanent Structured Cooperation"},
+    {"id": "A23", "name": "European Defense Fund"},
+    {"id": "A24", "name": "White Book on European Defense"},
+
+    {"id": "AU1", "name": "Marco Rossi"},
+    {"id": "AU2", "name": "Elena Novak"},
+    {"id": "AU3", "name": "Jan Kowalski"},
+    {"id": "AU4", "name": "Sophie Martin"},
+    {"id": "AU5", "name": "Luisa Fernández"},
+    {"id": "AU6", "name": "Alex Thompson"}
+  ],
+  "links": [
+    {"source": "ROOT_TOP", "target": "T1"}, {"source": "ROOT_TOP", "target": "T2"}, {"source": "ROOT_TOP", "target": "T3"},
+    {"source": "ROOT_TOP", "target": "T4"}, {"source": "ROOT_TOP", "target": "T5"}, {"source": "ROOT_TOP", "target": "T6"},
+
+    {"source": "T1", "target": "A1"}, {"source": "T1", "target": "A2"}, {"source": "T1", "target": "A3"}, {"source": "T1", "target": "A4"}, {"source": "T1", "target": "A14"}, {"source": "T1", "target": "A18"},
+    {"source": "T2", "target": "A5"}, {"source": "T2", "target": "A6"}, {"source": "T2", "target": "A7"}, {"source": "T2", "target": "A20"}, {"source": "T2", "target": "A19"},
+    {"source": "T3", "target": "A2"}, {"source": "T3", "target": "A22"}, {"source": "T3", "target": "A23"}, {"source": "T3", "target": "A24"}, {"source": "T3", "target": "A18"},
+    {"source": "T4", "target": "A8"}, {"source": "T4", "target": "A9"}, {"source": "T4", "target": "A10"}, {"source": "T4", "target": "A21"},
+    {"source": "T5", "target": "A11"}, {"source": "T5", "target": "A12"}, {"source": "T5", "target": "A13"},
+    {"source": "T6", "target": "A3"}, {"source": "T6", "target": "A14"}, {"source": "T6", "target": "A15"}, {"source": "T6", "target": "A16"}, {"source": "T6", "target": "A17"}, {"source": "T6", "target": "A19"},
+
+    {"source": "AU1", "target": "A1"}, {"source": "AU1", "target": "A14"}, {"source": "AU1", "target": "A18"},
+    {"source": "AU2", "target": "A5"}, {"source": "AU2", "target": "A6"}, {"source": "AU2", "target": "A20"},
+    {"source": "AU3", "target": "A2"}, {"source": "AU3", "target": "A22"}, {"source": "AU3", "target": "A23"},
+    {"source": "AU4", "target": "A8"}, {"source": "AU4", "target": "A10"}, {"source": "AU4", "target": "A21"},
+    {"source": "AU5", "target": "A11"}, {"source": "AU5", "target": "A12"}, {"source": "AU5", "target": "A13"},
+    {"source": "AU6", "target": "A3"}, {"source": "AU6", "target": "A15"}, {"source": "AU6", "target": "A16"}, {"source": "AU6", "target": "A19"}
+  ]
+}
